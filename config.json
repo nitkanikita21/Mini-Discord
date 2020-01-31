@@ -1,6 +1,6 @@
 {
-    "sys_prefix":"$",
+    "prefix":"$",
     "prompt":">>", 
     "token":"your_token",
-    "version":"0.9.5"
+    "version":"0.9.8"
 }

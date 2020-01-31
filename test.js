@@ -37,12 +37,15 @@ var menu_mode = 4
 var cashe = {
     servers:null,
     channels:null,
+    users:[],
     other:null
 }
-//false= chat; 0 = search server; 1 = search channel; 2 = выбор меню; 4 = ввод токена; 3 = выбор юзера для лс ; 5 = чат лс
+const menu_list = 'Выбор меню:\n'+fonts.bold+fonts.cyan+'0. '+fonts.reset+"Выбрать сервер\n"+fonts.bold+fonts.cyan+'1. '+fonts.reset+"Выбрать канал\n"+fonts.bold+fonts.cyan+'2. '+fonts.reset+"Выбрать юзера по айди\n"+fonts.bold+fonts.cyan+'3. '+fonts.reset+"Выбрать юзера со списка\n"
+//false= chat; 0 = search server; 1 = search channel; 2 = выбор меню; 4 = ввод токена; 3 = выбор юзера для лс ; 5 = чат лс ; 6 = лист юзеров
 rl.setPrompt(options.prompt)
 
 var messages = []
+var hs_msg = []
 const display = {
     display:()=>{
         console.clear()
@@ -70,8 +73,8 @@ client.on('ready',()=>{
     clearInterval(cashe.other)
     cashe.other = null
     console.log(fonts.bold+fonts.cyan+process.title+' v'+options.version+fonts.reset)
-    console.log('\n=========================\n'+fonts.bold+fonts.blue+'$exit - выход\n$menu - меню\n$v - узнать версию\n$ac - ваш аккаунт'+fonts.reset+'\n=========================')
-    console.log(['','Выбор меню:',' ',fonts.magenta+'0.'+fonts.reset+' Выбор сервера',fonts.magenta+'1.'+fonts.reset+' Выбор чата',''].join('\n'))
+    console.log('\n=========================\n'+fonts.bold+fonts.blue+options.prefix+'exit - выход\n'+options.prefix+'menu - меню\n'+options.prefix+'v - узнать версию\n'+options.prefix+'ac - ваш аккаунт'+fonts.reset+'\n=========================')
+    console.log(menu_list)
     menu_mode = 2
 })
 var login_discord = function(){
@@ -94,6 +97,7 @@ var login_discord = function(){
         client.user.setActivity('Mini-Discord '+options.version)
     })
 }
+
 var here_server  = null
 var here_channel = null
 var here_channel_obj = null
@@ -103,19 +107,35 @@ var here_server_obj = null
 var loader = ['/','-','\\','|']
 var anim_step = 0
 display.clear()
+
 console.log(fonts.bold+fonts.cyan+process.title+' v'+options.version+fonts.reset+'\n=========================')
+
 process.title = 'Mini-Discord'
+
 client.on('message',message=>{
-    if(menu_mode === 5){
-        if(message.channel.type === 'dm'){
+    if(message.channel.type === 'dm'){
+        if(message.author !== here_ls&&message.author.id !== client.user.id){
+            console.log('\n'+fonts.bold+fonts.cyan+'Cообщение от '+fonts.bold+fonts.blue+message.author.tag+fonts.reset)
+            if(cashe.users.includes(message.author) === false){
+                cashe.users.push(message.author)
+            }
+        }
+        if(menu_mode === 5){
             if(message.author.id === here_ls.id){
                 messages.push('['+fonts.green+message.author.username+fonts.reset+'] '+message.cleanContent)
+                hs_msg[message.author.id].push('['+fonts.green+message.author.username+fonts.reset+'] '+message.cleanContent)
                 display.display()
             }
             return
         }
+        if(menu_mode !== 5){
+            if(hs_msg[message.author.id] === undefined){
+                hs_msg[message.author.id] = []
+            }
+            hs_msg[message.author.id].push('['+fonts.green+message.author.username+fonts.reset+'] '+message.cleanContent)
+            return
+        }
     }
-    if(message.channel.id !== here_channel)return
     var nick = ''
     if(message.member.nickname === null){
         nick = message.author.username
@@ -123,6 +143,14 @@ client.on('message',message=>{
     if(message.member.nickname !== null){
         nick = message.member.nickname
     }
+    if(hs_msg[message.channel.id] === undefined){
+        hs_msg[message.channel.id] = []
+    }
+    if(hs_msg[message.channel.id] === undefined){
+        hs_msg[message.channel.id] = []
+    }
+    hs_msg[message.channel.id].push('['+fonts.green+nick+fonts.reset+'] '+message.cleanContent)
+    if(message.channel.id !== here_channel)return
     messages.push('['+fonts.green+nick+fonts.reset+'] '+message.cleanContent)
     here_channel_obj = message.channel
     here_server_obj = message.guild
@@ -138,10 +166,24 @@ const ls = {
         await console.log(ls.here_user())
         menu_mode = 5
         messages = []
+        cashe.users.push(here_ls)
+        if(hs_msg[id]!== undefined){
+            messages.unshift(hs_msg[id].join('\n'))
+            console.log(messages.join('\n'))
+        }
+        process.title = '@'+here_ls.username+' | Mini-Discord'
+        if(here_voice !== null){
+            process.title = '@'+here_ls.username+' | Mini-Discord | Voice: '+here_voice.name  
+        }
+        rl.prompt()
     },
     send: async (msg)=>{
         messages.push('['+fonts.green+client.user.username+fonts.reset+'] '+msg)
         await here_ls.send(msg)
+        if(hs_msg[here_ls.id] === undefined){
+            hs_msg[here_ls.id] = []
+        }
+        hs_msg[here_ls.id].push('['+fonts.green+client.user.username+fonts.reset+'] '+msg)
         display.display()
     }
 }
@@ -149,12 +191,12 @@ console.log('Введите токен пожалуйста\n'+fonts.red+fonts.b
 rl.prompt()
 //тут обработчик введённого
 rl.on('line',line =>{
-    if(line.startsWith('$')&&menu_mode !== 4){
+    if(line.startsWith(options.prefix)&&menu_mode !== 4){
         switch(true){
-            case line == '$exit':
+            case line == options.prefix+'exit':
                 process.kill(process.pid)
             break
-            case line == '$leave':
+            case line == options.prefix+'leave':
                 if(here_voice === null)return console.log(fonts.cyan+'Вы не подключены к войсу'+fonts.reset)
                 if(menu_mode == false){
                     process.title = '#'+here_channel_obj.name+' | Mini-Discord'
@@ -162,32 +204,38 @@ rl.on('line',line =>{
                 if(menu_mode !== false){
                     process.title = 'Mini-Discord'
                 }
+                if(menu_mode === 1){
+                    process.title = 'Menu | Mini-Discord'
+                }
                 console.log(fonts.green+here_voice.name+fonts.cyan+' | Отключено'+fonts.reset)
                 here_voice.leave()
                 here_voice = null
             break
-            case line == '$debug':
+            case line == options.prefix+'debug':
                 console.log(fonts.bold+fonts.bg_blue+fonts.cyan+'@нитка'+fonts.reset)
             break
-            case line == '$account'||line == '$ac':
+            case line == options.prefix+'account'||line == options.prefix+'ac':
                 console.log(fonts.bold+fonts.yellow+'Для смены юзера перезапустите программу!'+fonts.reset)
                 console.log(' ')
                 console.log(fonts.yellow+fonts.bold+client.user.username+fonts.reset)
             break
-            case line == '$v'||line == '$version':
+            case line == options.prefix+'v'||line == options.prefix+'version':
                 console.log(fonts.bold+fonts.cyan+options.version+fonts.reset)
             break
-            case line == '$menu':
+            case line == options.prefix+'menu':
                 here_channel_obj = null
                 here_ls = null
                 display.clear()
                 process.title = 'Menu | Mini-Discord'
-                console.log(['Выбор меню:',' ',fonts.magenta+'0.'+fonts.reset+' Выбор сервера',fonts.magenta+'1.'+fonts.reset+' Выбор чата'].join('\n'))
+                if(here_voice !== null){
+                    process.title = 'Menu | Mini-Discord | Voice: '+here_voice.name
+                }
+                console.log(menu_list)
                 menu_mode = 2
                 rl.prompt()
             break
-            case line == '$help':
-                console.log('\n=========================\n'+fonts.bold+fonts.blue+'$exit - выход\n$menu - меню\n$v - узнать версию\n$ac - ваш аккаунт'+fonts.reset+'\n=========================')
+            case line == options.prefix+'help':
+                console.log('\n=========================\n'+fonts.bold+fonts.blue+options.prefix+'exit - выход\n'+options.prefix+'menu - меню\n'+options.prefix+'v - узнать версию\n'+options.prefix+'ac - ваш аккаунт'+fonts.reset+'\n=========================')
                 rl.prompt()
             break
         }
@@ -202,7 +250,7 @@ rl.on('line',line =>{
                     var list = []
                     var i = 0
                     while(cashe.servers[i] !== undefined){
-                        list.push(fonts.magenta+i+'. '+fonts.reset+cashe.servers[i].name)
+                        list.push(fonts.bold+fonts.cyan+i+'. '+fonts.reset+cashe.servers[i].name+fonts.reset)
                         i++
                     }
                     console.log('Выберите сервер: \n'+list.join('\n'))
@@ -210,7 +258,7 @@ rl.on('line',line =>{
                     rl.prompt()
                 }
                 if(line == '1'){
-                    if(here_server_obj === null)return display.warn('Сервер не выбран! $menu')
+                    if(here_server_obj === null)return display.warn('Сервер не выбран! '+options.prefix+'menu')
                     display.clear()
                     console.log('Выберите канал на сервер:')
                     cashe.channels = here_server_obj.channels.array()
@@ -218,7 +266,7 @@ rl.on('line',line =>{
                     var list = []
                     var i = 0
                     while(cashe.channels[i] !== undefined){
-                        list.push(fonts.magenta+i+'. '+fonts.white+'['+fonts.cyan+cashe.channels[i].type+fonts.reset+'] '+cashe.channels[i].name)   
+                        list.push(fonts.bold+fonts.cyan+i+'. '+fonts.white+'['+fonts.cyan+cashe.channels[i].type+fonts.reset+'] '+cashe.channels[i].name+fonts.reset)   
                         i++
                     }
                     console.log(list.join('\n'))
@@ -230,6 +278,18 @@ rl.on('line',line =>{
                     console.log('Введите ниже айди собеседника\n'+fonts.bold+fonts.red+'ВАЖНО! Недействительный айди выдаст ошибку'+fonts.reset)
                     rl.prompt()
                     menu_mode = 3
+                }
+                if(line == '3'){
+                    if(cashe.users[0] === undefined)return console.log(fonts.bold+fonts.red+'У вас нету ниодного чата!'+fonts.reset)
+                    var list = []
+                    var i = 0
+                    while(cashe.users[i] !== undefined){
+                        list.push(fonts.bold+fonts.cyan+i+'. '+fonts.white+cashe.users[i].username+fonts.reset)   
+                        i++
+                    }
+                    console.log(list.join('\n'))
+                    menu_mode = 6
+                    rl.prompt()
                 }
             break
             case 0:
@@ -248,7 +308,7 @@ rl.on('line',line =>{
                     var list = []
                     var i = 0
                     while(cashe.channels[i] !== undefined){
-                        list.push(fonts.magenta+i+'. '+fonts.white+'['+fonts.cyan+cashe.channels[i].type+fonts.reset+'] '+cashe.channels[i].name)   
+                        list.push(fonts.bold+fonts.cyan+i+'. '+fonts.reset+'['+fonts.cyan+cashe.channels[i].type+fonts.reset+'] '+cashe.channels[i].name)   
                         i++
                     }
                     console.log(list.join('\n'))
@@ -257,8 +317,8 @@ rl.on('line',line =>{
                 }, 800);
             break
             case 1:
-                if(line.startsWith("$")){
-                    if(line != '$menu')return
+                if(line.startsWith(options.prefix)){
+                    if(line != options.prefix+'menu')return
                 }
                 console.log('');
                 var index = line
@@ -288,13 +348,18 @@ rl.on('line',line =>{
                         if(here_voice !== null){
                             process.title = '#'+here_channel_obj.name+' | Mini-Discord | Voice: '+here_voice.name
                         }
+                        if(hs_msg[here_channel_obj.id] !== undefined){
+                            console.log(hs_msg[here_channel_obj.id])
+                            messages.unshift(hs_msg[here_channel_obj.id].join('\n'))
+                            display.display()   
+                        }
                     }, 2000);
                 }
             break
             case 4:
                 token = line
                 if(line === 'config')token = options.token
-                if(line.startsWith('$')){
+                if(line.startsWith(options.prefix)){
                     display.clear()
                     console.log('Ввойдите прежде чем вводить команды!\n'+fonts.red+fonts.bold+'ВНИМАНИЕ! Если токен недействителен вы не войдёте в систему!'+fonts.reset)
                     rl.prompt()
@@ -311,15 +376,27 @@ rl.on('line',line =>{
                 login_discord()
             break
             case 3:
+                if(line.startsWith(options.prefix)){
+                    if(line != options.prefix+'menu')return
+                }
                 ls.search(line)
             break
             case 5:
                 ls.send(line)
                 display.display()
             break
+            case 6:
+                if(line.startsWith(options.prefix)){
+                    if(line != options.prefix+'menu')return
+                }
+                var index = line
+                index = parseInt(line)
+                if(cashe.users[index] === undefined)return console.log(fonts.bold+fonts.red+'Данного варианта нету!'+fonts.reset)
+                ls.search(cashe.users[index])
+            break
         }
     }
-    if(line.startsWith('$') === false && menu_mode === false){
+    if(line.startsWith(options.prefix) === false && menu_mode === false){
         if(here_channel_obj === null)return display.warn("Канал не выбран!")
         try {
             here_channel_obj.send(line)
@@ -328,5 +405,10 @@ rl.on('line',line =>{
             display.clear()
             display.system(fonts.red+ error)
         }
+    }
+})
+rl.on('close',()=>{
+    if(here_voice !== null){
+        here_voice.leave()
     }
 })
