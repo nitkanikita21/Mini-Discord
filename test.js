@@ -94,7 +94,7 @@ var login_discord = function(){
             login_discord()
         }, 2000);
     }).then(()=>{
-        client.user.setActivity('Mini-Discord '+options.version)
+        console.log("Ноисе")
     })
 }
 
@@ -149,9 +149,13 @@ client.on('message',message=>{
     if(hs_msg[message.channel.id] === undefined){
         hs_msg[message.channel.id] = []
     }
-    hs_msg[message.channel.id].push('['+fonts.green+nick+fonts.reset+'] '+message.cleanContent)
+    var parsecontent = message.cleanContent
+    if(message.mentions.users.array().includes(client.users)=== true){
+        parsecontent = `${fonts.bold+fonts.bg_yellow}||${fonts.reset}${parsecontent}`
+    }
+    hs_msg[message.channel.id].push('['+fonts.green+nick+fonts.reset+'] '+parsecontent)
     if(message.channel.id !== here_channel)return
-    messages.push('['+fonts.green+nick+fonts.reset+'] '+message.cleanContent)
+    messages.push('['+fonts.green+nick+fonts.reset+'] '+parsecontent)
     here_channel_obj = message.channel
     here_server_obj = message.guild
     display.display()

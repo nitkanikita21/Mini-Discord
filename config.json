@@ -1,6 +1,6 @@
 {
     "prefix":"$",
     "prompt":">>", 
-    "token":"your_token",
+    "token":"",
     "version":"0.9.8"
 }

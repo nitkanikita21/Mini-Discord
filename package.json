@@ -1,0 +1,17 @@
+{
+  "name": "minidiscord_temp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "json.js",
+  "dependencies": {
+    "iohook": "^0.6.4",
+    "discord.js": "^11.5.1",
+    "ffmpeg": "^0.0.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
